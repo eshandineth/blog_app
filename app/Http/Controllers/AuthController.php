@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Auth\Events\Registered;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
 {
@@ -26,17 +27,23 @@ class AuthController extends Controller
         'password' => 'required|min:6|confirmed',
     ]);
 
-    $user = User::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'password' => Hash::make($request->password),
-    ]);
+    try {
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
 
-    event(new Registered($user));
+        event(new Registered($user));
 
-    return redirect()->route('login')->with('success', 'Registration successful! Please check your email for verification.');
+        return redirect()->route('login')->with('success', 'Registration successful! Please check your email for verification.');
+    
+    } catch (TransportExceptionInterface $e) {
+        return back()->withErrors(['email' => 'Failed to send verification email. Please enter a valid email address or check your SMTP settings.']);
+    } catch (\Exception $e) {
+        return back()->withErrors(['email' => 'An error occurred during registration. Please try again later.']);
+    }
 }
-
     // Show Login Page
     public function showLogin()
 {
